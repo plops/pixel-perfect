@@ -20,7 +20,7 @@
 ;; y=sqrt [R^2- (q-cx)^2]+cy
 
 (defun draw-grating-disk (center-x center-y radius &key 
-			  (phase 0) (phases 3) (line-width 4))
+			  (phase 0) (phases 4) (line-width 8))
   (with-primitive :lines
     (let ((pl (* phases line-width)))
      (loop for xx from (round (- center-x radius))
@@ -34,19 +34,51 @@
 		     (vertex x (round (+ center-y y)))
 		     (vertex x (round (- center-y y))))))))))))
 
+(defun draw-grating-disk-50 (center-x center-y radius &key
+			     (phase 0) (phases 4) (line-width 16))
+  (unless (integerp (/ (* 2 line-width) phases))
+    (break "can't divide line-width into an integer number of phase steps ~a"
+	   (list line-width phases (/ (* 2 line-width) phases))))
+  (with-primitive :lines
+    (loop for x from (round (- center-x radius))
+       upto (round (+ center-x radius)) do
+	 (let* ((q (- (expt radius 2)
+		      (expt (- center-x x) 2))))
+	   (when (and (<= line-width (mod (+ (/ (* 2 line-width phase) phases) x) 
+					  (* 2 line-width))) 
+		      (< 0 q))
+	     (let ((y (sqrt q)))
+	       (vertex x (round (+ center-y y)))
+	       (vertex x (round center-y))))))))
+
+
 (defparameter *phase* 0)
+
 (let ((bla nil))
  (defun draw-screen ()
    (clear :color-buffer-bit)
-   (let ((phases 3))
-     (loop for (p c) in '((0 (.8 .3 0)) (1 (.3 .6 .2)) (2 (.3 .3 .9))) do
-      (apply #'color c)
-      (draw-grating-disk 150 150 100 :phase p
-			 :phases phases :line-width 4)))))
+   (color 1 1 1)
+   (let ((phases 2))
+     (draw-grating-disk
+      150 150 100
+      :phase (setf *phase* (mod (1+ *phase*)
+				phases))
+      :phases phases :line-width 8)
+     (color 1 0 0)
+     (let ((phases 3))
+       (draw-grating-disk-50 150 150 100
+			     :phases phases
+			     :phase 0
+			     :line-width (* 2 phases 2))
+       (color 0 1 0)
+       (draw-grating-disk-50 150 150 100
+			     :phases phases
+			     :phase 1
+			     :line-width (* 2 phases 2))))))
 
 #+nil
 (let ((x 790)
-      (y 100))
+      (y 0))
   (sb-thread:make-thread
    #'(lambda ()
        (gui:with-gui (300 300 x y)
